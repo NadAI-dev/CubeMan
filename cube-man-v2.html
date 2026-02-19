@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CUBE-MAN V2</title>
+<style>
+/* ═══════════════════════════════════════════════
+   VARIABLES — arcade CRT néon
+═══════════════════════════════════════════════ */
+:root{
+  --bg:#04050d;
+  --vio:#7c3aed;--vio-hi:#c4b5fd;
+  --cya:#06b6d4;--cya-hi:#67e8f9;
+  --yel:#ffd84d;
+  --txt:#e2e8ff;--dim:#3d4270;
+  --ok:#10b981;--warn:#f59e0b;--bad:#ef4444;
+  --mono:'Courier New',Courier,monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--txt);
+  font-family:var(--mono);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:10px;padding:12px;
+  background-image:
+    repeating-linear-gradient(0deg,transparent,transparent 3px,
+      rgba(6,182,212,.016) 3px,rgba(6,182,212,.016) 4px),
+    radial-gradient(ellipse 130% 90% at 50% 0%,#0d0625 0%,var(--bg) 65%);
+  overflow:hidden;
+}
+
+/* TITRE */
+#topbar{display:flex;align-items:baseline;gap:10px;user-select:none;margin-bottom:2px}
+#topbar h1{
+  font-size:clamp(16px,2.2vw,22px);font-weight:900;
+  text-transform:uppercase;letter-spacing:.08em;
+  color:var(--vio-hi);
+  text-shadow:0 0 18px rgba(196,181,253,.55),0 0 50px rgba(124,58,237,.28);
+}
+#topbar .tag{
+  font-size:9px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--cya);border:1px solid rgba(6,182,212,.32);
+  border-radius:3px;padding:2px 7px;
+}
+
+/* LAYOUT */
+#arena{display:flex;gap:12px;align-items:flex-start;width:100%;max-width:880px}
+@media(max-width:680px){#arena{flex-direction:column;align-items:center}}
+
+/* CANVAS */
+#cvwrap{
+  position:relative;flex-shrink:0;
+  border:1px solid rgba(124,58,237,.35);border-radius:10px;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(124,58,237,.1),0 0 32px rgba(124,58,237,.15),
+    0 0 65px rgba(6,182,212,.06),inset 0 0 35px rgba(0,0,0,.45);
+}
+canvas{display:block}
+
+/* PANNEAU */
+#panel{
+  display:flex;flex-direction:column;gap:9px;
+  min-width:172px;max-width:200px;flex:1;
+}
+@media(max-width:680px){
+  #panel{flex-direction:row;flex-wrap:wrap;max-width:100%;min-width:0}
+  .card{flex:1;min-width:125px}
+}
+.card{
+  background:rgba(8,11,26,.9);
+  border:1px solid rgba(124,58,237,.2);
+  border-radius:8px;padding:10px 12px;
+}
+.ct{
+  font-size:8px;letter-spacing:.28em;text-transform:uppercase;
+  color:var(--dim);margin-bottom:7px;
+  padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.04);
+}
+.big-num{
+  font-size:36px;font-weight:900;line-height:1;
+  color:var(--cya-hi);text-shadow:0 0 14px rgba(103,232,249,.45);
+}
+.sub-lbl{font-size:9px;letter-spacing:.16em;color:var(--dim);margin-top:2px}
+
+.pill{display:flex;justify-content:space-between;align-items:center;
+  font-size:11px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.pill:last-child{border-bottom:none}
+.pk{color:var(--dim)}.pv{font-weight:700}
+.pv.g{color:var(--ok)}.pv.w{color:var(--warn)}.pv.r{color:var(--bad)}
+
+/* Barre de mutation */
+#vbar-wrap{
+  background:rgba(255,255,255,.05);border-radius:4px;
+  height:9px;overflow:hidden;margin-top:6px;
+}
+#vbar{
+  height:100%;width:0%;border-radius:4px;
+  background:linear-gradient(90deg,#ffd84d,#7c3aed);
+  transition:width .25s;
+  box-shadow:0 0 8px rgba(124,58,237,.5);
+}
+
+/* Touches */
+.krow{display:flex;align-items:center;gap:7px;font-size:10px;margin-bottom:4px}
+.krow:last-child{margin-bottom:0}
+.kb{
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);
+  border-radius:4px;padding:2px 7px;color:var(--cya-hi);
+  font-size:10px;white-space:nowrap;flex-shrink:0;
+}
+.kd{color:var(--dim)}
+
+/* Boutons */
+.brow{display:flex;gap:6px;flex-wrap:wrap}
+button{
+  cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;
+  padding:8px 12px;border-radius:6px;
+  border:1px solid rgba(255,255,255,.11);
+  background:rgba(255,255,255,.04);color:var(--txt);
+  transition:background .12s,transform .08s,box-shadow .12s;
+}
+button:hover{background:rgba(255,255,255,.08);transform:translateY(-1px)}
+button.pri{
+  background:linear-gradient(130deg,rgba(124,58,237,.4),rgba(6,182,212,.25));
+  border-color:rgba(124,58,237,.52);
+  box-shadow:0 0 11px rgba(124,58,237,.22);
+}
+button.pri:hover{box-shadow:0 0 22px rgba(124,58,237,.42)}
+
+/* Difficulté */
+.diff-row{display:flex;gap:5px;margin-top:0}
+.diff-btn{
+  flex:1;font-size:9px;padding:7px 4px;border-radius:6px;text-align:center;
+  border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);
+  color:var(--dim);cursor:pointer;font-family:var(--mono);font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;
+  transition:background .12s,color .12s,border-color .12s,box-shadow .12s;
+}
+.diff-btn:hover{background:rgba(255,255,255,.08);color:var(--txt)}
+.diff-btn.active-easy{
+  background:rgba(16,185,129,.18);border-color:rgba(16,185,129,.55);
+  color:#6ee7b7;box-shadow:0 0 10px rgba(16,185,129,.2);
+}
+.diff-btn.active-medium{
+  background:rgba(245,158,11,.18);border-color:rgba(245,158,11,.55);
+  color:#fcd34d;box-shadow:0 0 10px rgba(245,158,11,.2);
+}
+.diff-btn.active-hard{
+  background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.55);
+  color:#fca5a5;box-shadow:0 0 10px rgba(239,68,68,.2);
+}
+#foot{font-size:9px;letter-spacing:.12em;color:var(--dim);opacity:.5;user-select:none}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>Cube-Man</h1><span class="tag">V2</span>
+</div>
+
+<div id="arena">
+  <div id="cvwrap"><canvas id="cv"></canvas></div>
+
+  <div id="panel">
+
+    <div class="card">
+      <div class="ct">Score</div>
+      <div class="big-num" id="usc">0</div>
+      <div class="sub-lbl">POINTS</div>
+    </div>
+
+    <div class="card">
+      <div class="ct">Stats</div>
+      <div class="pill"><span class="pk">État</span>       <span class="pv"   id="ust">Prêt</span></div>
+      <div class="pill"><span class="pk">Difficulté</span> <span class="pv g" id="udiff">Facile</span></div>
+      <div class="pill"><span class="pk">Cubes</span>      <span class="pv g" id="ucb">0 / 0</span></div>
+      <div class="pill"><span class="pk">Vies</span>       <span class="pv w" id="ulv">3</span></div>
+    </div>
+
+    <div class="card">
+      <div class="ct">Mutation Violette</div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px">
+        <span style="color:var(--yel)">■</span>
+        <span id="upc" style="font-weight:700;font-size:12px">0%</span>
+        <span style="color:var(--vio-hi)">■</span>
+      </div>
+      <div id="vbar-wrap"><div id="vbar"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="ct">Touches</div>
+      <div class="krow"><span class="kb">↑↓←→</span> <span class="kd">Bouger</span></div>
+      <div class="krow"><span class="kb">Espace</span><span class="kd">Jouer / Rejouer</span></div>
+      <div class="krow"><span class="kb">P</span>     <span class="kd">Pause</span></div>
+      <div class="krow"><span class="kb">R</span>     <span class="kd">Reset</span></div>
+      <div class="krow"><span class="kb">M</span>     <span class="kd">Mute</span></div>
+    </div>
+
+    <div class="card">
+      <div class="ct">Difficulté</div>
+      <div class="diff-row">
+        <button class="diff-btn active-easy" id="bdiff-easy"  data-diff="easy">Facile</button>
+        <button class="diff-btn"             id="bdiff-medium" data-diff="medium">Moyen</button>
+        <button class="diff-btn"             id="bdiff-hard"   data-diff="hard">Difficile</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ct">Actions</div>
+      <div class="brow">
+        <button class="pri" id="bplay">Jouer</button>
+        <button id="bpause">Pause</button>
+        <button id="breset">Reset</button>
+        <button id="bmute">♪ Mute</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div id="foot">Mange les cubes · École Cube</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   CUBE-MAN V2
+   §1  CFG        — toutes les constantes réglables en un lieu
+   §2  MAP        — labyrinthe 15×15, helper isWalkable
+   §3  AUDIO      — Web Audio API : musique chiptune + SFX
+   §4  STATE      — objet G, reset, helpers
+   §5  INPUT      — clavier (Set) + boutons
+   §6  UPDATE     — joueur (tile-based), fantômes (wander/chase)
+   §7  COLLISIONS — cube eat, ghost hit
+   §8  RENDER     — terrain, cubes iso, Pac-Man, fantômes, overlays
+   §9  LOOP       — RAF unique, dt cappé
+════════════════════════════════════════════════════════════════ */
+(() => {
+
+/* ════ §1  CFG ════════════════════════════════════════════════
+   ► RÉGLAGES PRINCIPAUX — modifie ici, tout suit automatiquement
+══════════════════════════════════════════════════════════════ */
+const CFG = Object.freeze({
+  /* Grille */
+  COLS: 15,              // nombre de colonnes de la map
+  ROWS: 15,              // nombre de lignes de la map
+  TS:   36,              // ◄ TAILLE D'UN TILE en pixels (plus grand = meilleure lisibilité)
+
+  /* Pac-Man */
+  // Rayon = TS/2 - PAD_PAC. Avec TS=36, rayon = 15px (était ~10px en V1, soit +50%)
+  PAD_PAC:   3,          // ◄ marge interne pour le rayon de Pac (px) — moins grand = plus gros
+  PLAYER_SPD:4.8,        // ◄ VITESSE du joueur en tiles/seconde
+
+  /* Cubes (pac-gommes) */
+  CUBE_S:    7.5,        // ◄ TAILLE ISO des cubes en px (était ~4.5px, +67%)
+  // Placement : un cube tous les CUBE_SKIP tiles de couloir
+  CUBE_SKIP: 2,          // ◄ DENSITÉ — 1=partout, 2=un sur deux, 3=un sur trois
+
+  /* Fantômes */
+  // GHOST_SPD est maintenant dynamique via DIFFICULTY (voir ci-dessous)
+  GHOST_COLS:['#ef4444','#f97316','#22d3ee'],
+
+  /* Niveaux de difficulté
+     Chaque preset définit :
+       ghostSpd     : vitesse des fantômes (tiles/s)
+       playerSpd    : vitesse de Pac-Man   (tiles/s)
+       lives        : nombre de vies
+       chaseAt      : seuil violetProg pour le mode chase
+       ghostCount   : nombre de fantômes actifs (1-3)
+       scoreBonus   : multiplicateur de score (x1/x1.5/x2) */
+  DIFFICULTY: {
+    easy:   { ghostSpd:2.2, playerSpd:5.2, lives:5, chaseAt:0.55, ghostCount:1, scoreBonus:1.0 },
+    medium: { ghostSpd:3.2, playerSpd:4.8, lives:3, chaseAt:0.40, ghostCount:2, scoreBonus:1.5 },
+    hard:   { ghostSpd:4.6, playerSpd:4.4, lives:2, chaseAt:0.25, ghostCount:3, scoreBonus:2.0 },
+  },
+
+  /* Score */
+  CUBE_PTS:  10,
+  GHOST_PTS: 200,
+  LIVES:     3,
+
+  /* Couleur Pac-Man (lerp jaune → violet) */
+  COL_A: {r:255,g:216,b:77},   // jaune départ
+  COL_B: {r:124,g:58, b:237},  // violet cible
+  // ◄ VITESSE DE TRANSITION : exposant de la courbe de progression
+  // 0.35 = très rapide au début (violet visible dès ~5 cubes)
+  // 0.5  = rapide   1.0 = linéaire   2.0 = lente
+  VIOLET_EXP: 0.38,
+
+  /* Audio */
+  MASTER_VOL: 0.15,      // ◄ VOLUME GLOBAL musique (0→1)
+  SFX_EAT_VOL: 0.45,    // ◄ VOLUME du bip "manger cube"
+});
+
+/* ════ DIFFICULTÉ COURANTE ═══════════════════════════════════
+   currentDiff est modifiable à tout moment depuis le panel.
+   resetAll() lit toujours CFG.DIFFICULTY[currentDiff].
+════════════════════════════════════════════════════════════ */
+let currentDiff = 'easy';   // 'easy' | 'medium' | 'hard'
+
+function getDiff(){ return CFG.DIFFICULTY[currentDiff]; }
+
+/* ════ §2  MAP ════════════════════════════════════════════════
+   0 = couloir (cube spawnable)
+   1 = mur
+   2 = spawn Pac-Man
+   3 = spawn fantômes
+   Labyrinthe 15×15 conçu à la main, symétrique H+V
+══════════════════════════════════════════════════════════════ */
+const RAW_MAP = [
+  "111111111111111",
+  "100000000000001",
+  "101101110110101",
+  "100100000100101",
+  "101100110011101",
+  "100000000000001",
+  "101110101011101",
+  "100030020000001",
+  "101110101011101",
+  "100000000000001",
+  "101100110011101",
+  "100100000100101",
+  "101101110110101",
+  "100000000000001",
+  "111111111111111",
+];
+
+function buildMap(){
+  return RAW_MAP.map(row=>[...row].map(Number));
+}
+function cloneMap(m){ return m.map(r=>[...r]); }
+
+// Vrai si la case (r,c) est accessible (pas un mur, pas hors limites)
+function isWalkable(map,r,c){
+  if(r<0||r>=CFG.ROWS||c<0||c>=CFG.COLS) return false;
+  return map[r][c] !== 1;
+}
+
+const BASE_MAP = buildMap();
+
+/* ════ §3  AUDIO — Web Audio API ══════════════════════════════
+   AudioContext créé UNIQUEMENT au premier clic utilisateur
+   (politique autoplay navigateur). Musique schedulée par
+   segments avec AC.currentTime pour être précise et stable.
+══════════════════════════════════════════════════════════════ */
+let AC=null, masterGain=null, muted=false;
+let musicTimer=null, musicNodes=[], melIdx=0;
+
+// Séquence mélodique (chiptune rétro 80s)
+const MELODY=[
+  262,294,330,349,392,349,330,294,
+  262,330,392,440,494,440,392,330,
+  392,440,494,523,587,523,494,440,
+  349,392,440,494,440,392,349,330,
+];
+const BASS=[130,165,196,220,196,165,130,165];
+
+function initAudio(){
+  if(AC) return;
+  AC = new (window.AudioContext||window.webkitAudioContext)();
+  masterGain = AC.createGain();
+  masterGain.gain.value = muted ? 0 : CFG.MASTER_VOL;
+  masterGain.connect(AC.destination);
+}
+
+function setMute(m){
+  muted=m;
+  if(masterGain) masterGain.gain.value = muted ? 0 : CFG.MASTER_VOL;
+  document.getElementById('bmute').textContent = muted ? '♪ On' : '♪ Mute';
+}
+
+// ─ SFX : court bip ascendant bien audible ─
+function sfxEat(){
+  if(!AC) return;
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.connect(g); g.connect(masterGain);
+  o.type='square';
+  o.frequency.setValueAtTime(660,AC.currentTime);
+  o.frequency.exponentialRampToValueAtTime(1320,AC.currentTime+0.07);
+  g.gain.setValueAtTime(CFG.SFX_EAT_VOL,AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+0.09);
+  o.start(); o.stop(AC.currentTime+0.09);
+}
+
+// ─ SFX mort ─
+function sfxDie(){
+  if(!AC) return;
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.connect(g); g.connect(masterGain);
+  o.type='sawtooth';
+  o.frequency.setValueAtTime(440,AC.currentTime);
+  o.frequency.exponentialRampToValueAtTime(80,AC.currentTime+0.55);
+  g.gain.setValueAtTime(0.4,AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+0.55);
+  o.start(); o.stop(AC.currentTime+0.55);
+}
+
+// ─ SFX victoire ─
+function sfxWin(){
+  if(!AC) return;
+  [523,659,784,1047].forEach((f,i)=>{
+    const o=AC.createOscillator(),g=AC.createGain();
+    o.connect(g); g.connect(masterGain);
+    o.type='square'; o.frequency.value=f;
+    const t=AC.currentTime+i*0.13;
+    g.gain.setValueAtTime(0.3,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
+    o.start(t); o.stop(t+0.18);
+  });
+}
+
+// ─ SFX manger fantôme ─
+function sfxGhost(){
+  if(!AC) return;
+  const o=AC.createOscillator(),g=AC.createGain();
+  o.connect(g); g.connect(masterGain);
+  o.type='triangle';
+  o.frequency.setValueAtTime(200,AC.currentTime);
+  o.frequency.exponentialRampToValueAtTime(700,AC.currentTime+0.15);
+  g.gain.setValueAtTime(0.4,AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+0.15);
+  o.start(); o.stop(AC.currentTime+0.15);
+}
+
+// ─ Musique chiptune — scheduling AC.currentTime ─
+function startMusic(){
+  if(!AC) return;
+  stopMusic();
+  const BPM=148, BEAT=60/BPM;
+  let cursor=AC.currentTime;
+
+  function schedNote(freq,when,dur,type,vol){
+    const o=AC.createOscillator(),g=AC.createGain();
+    o.connect(g); g.connect(masterGain);
+    o.type=type; o.frequency.value=freq;
+    g.gain.setValueAtTime(0,when);
+    g.gain.linearRampToValueAtTime(vol,when+0.01);
+    g.gain.setValueAtTime(vol,when+dur*0.65);
+    g.gain.linearRampToValueAtTime(0,when+dur*0.9);
+    o.start(when); o.stop(when+dur);
+    musicNodes.push(o,g);
+  }
+
+  function tick(){
+    while(cursor < AC.currentTime+0.5){
+      const f=MELODY[melIdx%MELODY.length];
+      const bf=BASS[Math.floor(melIdx/2)%BASS.length];
+      schedNote(f,cursor,BEAT,'square',0.22);
+      if(melIdx%2===0) schedNote(bf,cursor,BEAT*2,'triangle',0.10);
+      cursor+=BEAT;
+      melIdx++;
+    }
+    // Nettoyer les nœuds terminés
+    musicNodes=musicNodes.filter(n=>{ try{ return !n.playbackState||n.playbackState<3; }catch(e){return false;} });
+    musicTimer=setTimeout(tick,200);
+  }
+  tick();
+}
+
+function stopMusic(){
+  if(musicTimer){ clearTimeout(musicTimer); musicTimer=null; }
+  musicNodes.forEach(n=>{ try{n.stop?n.stop():n.disconnect();}catch(e){} });
+  musicNodes=[];
+}
+
+/* ════ §4  STATE ══════════════════════════════════════════════ */
+const cv=document.getElementById('cv');
+const ctx=cv.getContext('2d');
+// Taille du canvas dérivée des constantes
+cv.width  = CFG.COLS*CFG.TS;
+cv.height = CFG.ROWS*CFG.TS;
+
+// Cache DOM
+const EL={
+  sc:   document.getElementById('usc'),
+  st:   document.getElementById('ust'),
+  cb:   document.getElementById('ucb'),
+  lv:   document.getElementById('ulv'),
+  pc:   document.getElementById('upc'),
+  vb:   document.getElementById('vbar'),
+  diff: document.getElementById('udiff'),
+};
+
+let G; // état unique
+
+// Trouver la première case d'un type dans la map
+function findTile(map,type){
+  for(let r=0;r<CFG.ROWS;r++)
+    for(let c=0;c<CFG.COLS;c++)
+      if(map[r][c]===type) return {r,c};
+  // Fallback centre si absent
+  return {r:Math.floor(CFG.ROWS/2),c:Math.floor(CFG.COLS/2)};
+}
+
+function mkPlayer(map){
+  const {r,c}=findTile(map,2);
+  return {
+    row:r,col:c,
+    x:c*CFG.TS+CFG.TS/2, y:r*CFG.TS+CFG.TS/2,
+    dx:1,dy:0,             // direction courante (droite par défaut)
+    nextDx:0,nextDy:0,     // input bufferisé (aucune touche encore)
+    moving:false,moveTimer:0,
+    targetRow:r,targetCol:c,
+    violetProg:0,          // 0→1 progression couleur
+    mouthAngle:0.05,mouthDir:1,
+    dead:false,deathTimer:0,
+  };
+}
+
+function mkGhosts(map){
+  // Chercher case 3 et spawner jusqu'à 3 fantômes autour
+  const {r,c}=findTile(map,3);
+  const offsets=[{r:0,c:0},{r:0,c:1},{r:1,c:0}];
+  return offsets.slice(0,3).map((o,i)=>{
+    const gr=r+o.r, gc=c+o.c;
+    return {
+      row:gr, col:gc,
+      x:gc*CFG.TS+CFG.TS/2, y:gr*CFG.TS+CFG.TS/2,
+      dx:[1,-1,0][i], dy:[0,0,1][i],
+      moving:false,moveTimer:0,
+      targetRow:gr,targetCol:gc,
+      color:CFG.GHOST_COLS[i],
+      mode:'wander',
+      dead:false,deadTimer:0,
+    };
+  });
+}
+
+function mkCubes(map){
+  // Place un cube tous les CUBE_SKIP cases de couloir (en alternant par index)
+  const cubes=[];
+  let idx=0;
+  for(let r=0;r<CFG.ROWS;r++){
+    for(let c=0;c<CFG.COLS;c++){
+      if(map[r][c]===0){
+        if(idx%CFG.CUBE_SKIP===0){
+          cubes.push({r,c,eaten:false});
+        }
+        idx++;
+      }
+    }
+  }
+  return cubes;
+}
+
+function mkState(){
+  const map=cloneMap(BASE_MAP);
+  const cubes=mkCubes(map);
+  const diff = getDiff();
+  // Limiter le nombre de fantômes selon la difficulté
+  const allGhosts = mkGhosts(map);
+  const activeGhosts = allGhosts.slice(0, diff.ghostCount);
+  return {
+    phase:'start',  // 'start'|'play'|'pause'|'dead'|'over'|'win'
+    map,
+    player:mkPlayer(map),
+    ghosts:activeGhosts,
+    cubes,
+    total:cubes.length,
+    eaten:0,
+    score:0,
+    lives:diff.lives,
+    t:0,
+  };
+}
+
+function resetAll(){
+  stopMusic();
+  G=mkState();
+  pushUI();
+}
+
+/* ════ §5  INPUT ══════════════════════════════════════════════ */
+const keys=new Set();
+
+document.addEventListener('keydown',e=>{
+  keys.add(e.key);
+  if(e.key===' ')                { e.preventDefault(); doPlay(); }
+  if(e.key==='p'||e.key==='P')  { doPause(); }
+  if(e.key==='r'||e.key==='R')  { resetAll(); }
+  if(e.key==='m'||e.key==='M')  { setMute(!muted); }
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))
+    e.preventDefault();
+},{passive:false});
+
+document.addEventListener('keyup',e=>keys.delete(e.key));
+
+document.getElementById('bplay').addEventListener('click', doPlay);
+document.getElementById('bpause').addEventListener('click',doPause);
+document.getElementById('breset').addEventListener('click',resetAll);
+document.getElementById('bmute').addEventListener('click',()=>setMute(!muted));
+
+// Boutons de difficulté
+['easy','medium','hard'].forEach(d=>{
+  document.getElementById('bdiff-'+d).addEventListener('click',()=>{
+    // Ne pas changer de difficulté en cours de partie
+    if(G.phase==='play') return;
+    currentDiff = d;
+    // Mettre à jour le style actif
+    ['easy','medium','hard'].forEach(x=>{
+      const btn = document.getElementById('bdiff-'+x);
+      btn.className = 'diff-btn' + (x===d ? ' active-'+x : '');
+    });
+    // Mettre à jour le label difficulté dans le panneau
+    EL.diff.textContent = {easy:'Facile',medium:'Moyen',hard:'Difficile'}[d];
+    EL.diff.className = 'pv ' + (d==='easy'?'g':d==='medium'?'w':'r');
+    resetAll();
+  });
+});
+
+function doPlay(){
+  initAudio();
+  if(G.phase==='over'||G.phase==='win'){ resetAll(); G.phase='play'; startMusic(); return; }
+  if(G.phase==='start'){ G.phase='play'; startMusic(); pushUI(); return; }
+  if(G.phase==='pause'){ G.phase='play'; startMusic(); pushUI(); return; }
+}
+function doPause(){
+  if(G.phase==='play') { G.phase='pause'; stopMusic(); pushUI(); }
+  else if(G.phase==='pause'){ G.phase='play'; startMusic(); pushUI(); }
+}
+
+function readInput(){
+  const p=G.player;
+  if(keys.has('ArrowUp'))   { p.nextDx=0; p.nextDy=-1; }
+  if(keys.has('ArrowDown')) { p.nextDx=0; p.nextDy= 1; }
+  if(keys.has('ArrowLeft')) { p.nextDx=-1;p.nextDy= 0; }
+  if(keys.has('ArrowRight')){ p.nextDx= 1;p.nextDy= 0; }
+}
+
+/* ════ §6  UPDATE ═════════════════════════════════════════════ */
+
+/* ── Joueur (tile-based) ──
+   moveTimer 0→1 = transit entre deux cases.
+   Valide la case au moment où moveTimer≥1, puis lit le buffer input.
+   Avantage : collision tile parfaitement fiable, jamais de glitch. */
+function updatePlayer(dt){
+  const p=G.player;
+
+  if(p.dead){
+    p.deathTimer+=dt;
+    if(p.deathTimer>1.1){
+      p.dead=false; p.deathTimer=0;
+      G.lives--;
+      if(G.lives<=0){ G.phase='over'; pushUI(); return; }
+      // Repositionner Pac sans toucher aux cubes
+      const fresh=mkPlayer(G.map);
+      Object.assign(p,{
+        row:fresh.row,col:fresh.col,x:fresh.x,y:fresh.y,
+        dx:0,dy:0,nextDx:0,nextDy:0,
+        moving:false,moveTimer:0,targetRow:fresh.row,targetCol:fresh.col,
+        dead:false,deathTimer:0,
+      });
+      G.ghosts=mkGhosts(G.map);
+      pushUI();
+    }
+    return;
+  }
+
+  // Animation bouche
+  p.mouthAngle+=p.mouthDir*dt*4.2;
+  if(p.mouthAngle>0.42){p.mouthAngle=0.42;p.mouthDir=-1;}
+  if(p.mouthAngle<0.03){p.mouthAngle=0.03;p.mouthDir=1;}
+
+  if(!p.moving){
+    // Tente de bouger vers (dx,dy). Retourne true si succès.
+    const tryMove=(dx,dy)=>{
+      if(dx===0&&dy===0) return false;
+      const nr=p.row+dy, nc=p.col+dx;
+      if(isWalkable(G.map,nr,nc)){
+        p.dx=dx; p.dy=dy;
+        p.targetRow=nr; p.targetCol=nc;
+        p.moving=true; p.moveTimer=0;
+        return true;
+      }
+      return false;
+    };
+    // 1) Essayer la direction demandée (input bufferisé)
+    // 2) Si bloquée ou absente, continuer dans la direction actuelle
+    const inputMoved = tryMove(p.nextDx, p.nextDy);
+    if(!inputMoved) tryMove(p.dx, p.dy);
+  }
+
+  if(p.moving){
+    p.moveTimer+=dt*getDiff().playerSpd;
+    const t=Math.min(p.moveTimer,1);
+    const sx=p.col*CFG.TS+CFG.TS/2,  sy=p.row*CFG.TS+CFG.TS/2;
+    const ex=p.targetCol*CFG.TS+CFG.TS/2, ey=p.targetRow*CFG.TS+CFG.TS/2;
+    p.x=sx+(ex-sx)*t;
+    p.y=sy+(ey-sy)*t;
+    if(p.moveTimer>=1){
+      p.row=p.targetRow; p.col=p.targetCol;
+      p.x=ex; p.y=ey;
+      p.moving=false; p.moveTimer=0;
+      eatCube(p.row,p.col);
+      checkGhostHit();
+    }
+  }
+}
+
+/* ── Fantômes — wander + chase ──
+   Wander : choix aléatoire pondéré (pas de demi-tour sauf cul-de-sac)
+   Chase (violetProg>0.4) : minimise distance Manhattan vers Pac
+   Full violet (violetProg≥1) : Pac mange les fantômes au contact */
+function updateGhosts(dt){
+  const p=G.player;
+  G.ghosts.forEach(gh=>{
+    if(gh.dead){
+      gh.deadTimer+=dt;
+      if(gh.deadTimer>3){
+        const fresh=mkGhosts(G.map)[G.ghosts.indexOf(gh)]||mkGhosts(G.map)[0];
+        Object.assign(gh,{
+          row:fresh.row,col:fresh.col,x:fresh.x,y:fresh.y,
+          moving:false,moveTimer:0,targetRow:fresh.row,targetCol:fresh.col,
+          dead:false,deadTimer:0,
+        });
+      }
+      return;
+    }
+
+    gh.mode = p.violetProg>getDiff().chaseAt ? 'chase' : 'wander';
+
+    if(!gh.moving){
+      const dirs=[{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
+      // Exclure le demi-tour sauf si bloqué
+      let valid=dirs.filter(d=>
+        isWalkable(G.map,gh.row+d.dy,gh.col+d.dx)&&
+        !(d.dx===-gh.dx&&d.dy===-gh.dy)
+      );
+      if(valid.length===0)
+        valid=dirs.filter(d=>isWalkable(G.map,gh.row+d.dy,gh.col+d.dx));
+      if(valid.length===0) return;
+
+      let chosen;
+      if(gh.mode==='chase'){
+        chosen=valid.reduce((best,d)=>{
+          const dist=Math.abs(gh.row+d.dy-p.row)+Math.abs(gh.col+d.dx-p.col);
+          const bd  =Math.abs(gh.row+best.dy-p.row)+Math.abs(gh.col+best.dx-p.col);
+          return dist<bd?d:best;
+        },valid[0]);
+      } else {
+        // Wander : 50% tout droit, 30% biais Pac, 20% aléatoire
+        const straight=valid.find(d=>d.dx===gh.dx&&d.dy===gh.dy);
+        const bias=valid.reduce((best,d)=>{
+          const dist=Math.abs(gh.row+d.dy-p.row)+Math.abs(gh.col+d.dx-p.col);
+          const bd  =Math.abs(gh.row+best.dy-p.row)+Math.abs(gh.col+best.dx-p.col);
+          return dist<bd?d:best;
+        },valid[0]);
+        const rnd=Math.random();
+        chosen = rnd<0.5&&straight ? straight
+               : rnd<0.8           ? bias
+               : valid[Math.floor(Math.random()*valid.length)];
+      }
+
+      gh.dx=chosen.dx; gh.dy=chosen.dy;
+      gh.targetRow=gh.row+gh.dy;
+      gh.targetCol=gh.col+gh.dx;
+      gh.moving=true; gh.moveTimer=0;
+    }
+
+    gh.moveTimer+=dt*getDiff().ghostSpd;
+    const t=Math.min(gh.moveTimer,1);
+    const sx=gh.col*CFG.TS+CFG.TS/2, sy=gh.row*CFG.TS+CFG.TS/2;
+    const ex=gh.targetCol*CFG.TS+CFG.TS/2, ey=gh.targetRow*CFG.TS+CFG.TS/2;
+    gh.x=sx+(ex-sx)*t;
+    gh.y=sy+(ey-sy)*t;
+
+    if(gh.moveTimer>=1){
+      gh.row=gh.targetRow; gh.col=gh.targetCol;
+      gh.x=ex; gh.y=ey;
+      gh.moving=false; gh.moveTimer=0;
+      checkGhostHit();
+    }
+  });
+}
+
+/* ════ §7  COLLISIONS ══════════════════════════════════════════ */
+
+function eatCube(row,col){
+  const p=G.player;
+  const cube=G.cubes.find(c=>!c.eaten&&c.r===row&&c.c===col);
+  if(!cube) return;
+  cube.eaten=true;
+  G.eaten++;
+  G.score+=Math.round(CFG.CUBE_PTS * getDiff().scoreBonus);
+  sfxEat();
+
+  /* ◄ PROGRESSION VIOLET — courbe en puissance
+     Math.pow(ratio, VIOLET_EXP) avec EXP<1 = départ rapide.
+     Ex : ratio=0.15 (10 cubes sur ~65), EXP=0.38 → prog≈0.43 (43% violet !)
+     Modifie CFG.VIOLET_EXP pour régler la vitesse de transition. */
+  const ratio=G.eaten/G.total;
+  p.violetProg=Math.min(1, Math.pow(ratio, CFG.VIOLET_EXP));
+
+  // Mise à jour UI
+  EL.sc.textContent=G.score;
+  EL.cb.textContent=`${G.eaten} / ${G.total}`;
+  const pct=Math.round(p.violetProg*100);
+  EL.pc.textContent=pct+'%';
+  EL.vb.style.width=pct+'%';
+
+  if(G.eaten>=G.total){ G.phase='win'; sfxWin(); stopMusic(); pushUI(); }
+}
+
+function checkGhostHit(){
+  const p=G.player;
+  if(p.dead) return;
+  G.ghosts.forEach(gh=>{
+    if(gh.dead) return;
+    if(gh.row===p.row&&gh.col===p.col){
+      if(p.violetProg>=1){
+        // Full violet : Pac mange le fantôme
+        gh.dead=true; gh.deadTimer=0;
+        G.score+=CFG.GHOST_PTS;
+        EL.sc.textContent=G.score;
+        sfxGhost();
+      } else {
+        p.dead=true; p.deathTimer=0;
+        sfxDie(); stopMusic();
+      }
+    }
+  });
+}
+
+/* ════ §8  RENDER ═════════════════════════════════════════════ */
+
+// Interpolation linéaire couleur
+function lerpRGB(a,b,t){
+  return `rgb(${Math.round(a.r+(b.r-a.r)*t)},${Math.round(a.g+(b.g-a.g)*t)},${Math.round(a.b+(b.b-a.b)*t)})`;
+}
+
+// ─ Terrain ─
+function drawMap(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.fillStyle='#060810'; ctx.fillRect(0,0,cv.width,cv.height);
+
+  for(let r=0;r<CFG.ROWS;r++){
+    for(let c=0;c<CFG.COLS;c++){
+      const x=c*CFG.TS, y=r*CFG.TS, ts=CFG.TS;
+      if(G.map[r][c]===1){
+        // Mur avec dégradé violet foncé
+        const g=ctx.createLinearGradient(x,y,x+ts,y+ts);
+        g.addColorStop(0,'#120838'); g.addColorStop(1,'#090420');
+        ctx.fillStyle=g; ctx.fillRect(x,y,ts,ts);
+        // Bordure néon
+        ctx.strokeStyle='rgba(124,58,237,.28)';
+        ctx.lineWidth=1;
+        ctx.strokeRect(x+.5,y+.5,ts-1,ts-1);
+      } else {
+        ctx.fillStyle='#07091a'; ctx.fillRect(x,y,ts,ts);
+        // Légère grille
+        ctx.strokeStyle='rgba(124,58,237,.04)';
+        ctx.lineWidth=.5;
+        ctx.strokeRect(x,y,ts,ts);
+      }
+    }
+  }
+}
+
+// ─ Cube isométrique (pac-gomme)
+// ◄ Taille réglée via CFG.CUBE_S
+function drawIsoCube(cx,cy,s){
+  cy+=Math.sin(G.t*3.2+cx*0.07)*1;  // bob subtil
+
+  const T =[cx,    cy-s];
+  const MR=[cx+s,  cy-s*.45];
+  const MC=[cx,    cy+s*.1];
+  const ML=[cx-s,  cy-s*.45];
+  const BR=[cx+s,  cy+s*.55];
+  const BC=[cx,    cy+s*1.1];
+  const BL=[cx-s,  cy+s*.55];
+
+  ctx.save();
+  ctx.shadowColor='rgba(124,58,237,.65)'; ctx.shadowBlur=8;
+
+  // Face TOP (lavande→cyan)
+  const gT=ctx.createLinearGradient(ML[0],ML[1],MR[0],T[1]);
+  gT.addColorStop(0,'#c4b5fd'); gT.addColorStop(1,'#67e8f9');
+  poly([T,MR,MC,ML]); ctx.fillStyle=gT; ctx.fill();
+
+  ctx.shadowBlur=0;
+
+  // Face DROITE (violet foncé)
+  const gR=ctx.createLinearGradient(MC[0],MC[1],BR[0],BR[1]);
+  gR.addColorStop(0,'#6d28d9'); gR.addColorStop(1,'#2e1065');
+  poly([MC,MR,BR,BC]); ctx.fillStyle=gR; ctx.fill();
+
+  // Face GAUCHE (cyan foncé)
+  poly([MC,ML,BL,BC]);
+  ctx.fillStyle='#0c4a6e'; ctx.fill();
+
+  // Reflet
+  ctx.globalAlpha=.45; ctx.fillStyle='rgba(255,255,255,.85)';
+  ctx.beginPath();
+  ctx.ellipse(cx-s*.2,cy-s*.75,s*.17,s*.07,-.3,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// ─ Pac-Man → Cube : transformation morphologique progressive ─
+// p.violetProg 0→1 : cercle jaune avec bouche → cube iso violet
+// La géométrie de chaque face est interpolée linéairement entre
+// les points du cercle et les sommets du cube.
+function drawPlayer(){
+  const p = G.player;
+  const vp = p.violetProg;           // 0 = Pac, 1 = Cube complet
+  const R  = CFG.TS/2 - CFG.PAD_PAC; // rayon de base
+  const cx = p.x, cy = p.y;
+
+  // Couleur de base : lerp jaune → violet
+  const col = lerpRGB(CFG.COL_A, CFG.COL_B, vp);
+
+  // Direction de la bouche (pour Pac-Man)
+  let facing = 0;
+  if(p.dx===-1) facing = Math.PI;
+  if(p.dy===-1) facing = -Math.PI/2;
+  if(p.dy===1)  facing =  Math.PI/2;
+  const mouth = p.dead ? 0 : p.mouthAngle;
+
+  // ── Sommets du cube iso (dans l'espace 2D du canvas) ──
+  // Cube centré sur (cx,cy), taille R (même footprint que le cercle)
+  const s  = R * 0.95;
+  const T  = [cx,      cy - s];
+  const MR = [cx + s,  cy - s*0.45];
+  const MC = [cx,      cy + s*0.10];
+  const ML = [cx - s,  cy - s*0.45];
+  const BR = [cx + s,  cy + s*0.55];
+  const BC = [cx,      cy + s*1.10];
+  const BL = [cx - s,  cy + s*0.55];
+
+  // ── Lerp entre un point du cercle (angle) et un sommet du cube ──
+  // angle = position sur le cercle Pac-Man correspondant à ce sommet
+  const lp = (circleAngle, cubeVtx) => ({
+    x: lerp(cx + Math.cos(circleAngle)*R, cubeVtx[0], vp),
+    y: lerp(cy + Math.sin(circleAngle)*R, cubeVtx[1], vp),
+  });
+
+  // Correspondance angle → sommet (angles approximatifs de l'iso)
+  const pT  = lp(-Math.PI/2,   T );
+  const pMR = lp(-Math.PI/6,   MR);
+  const pMC = lp( Math.PI/2,   MC);
+  const pML = lp(-5*Math.PI/6, ML);
+  const pBR = lp( Math.PI/6,   BR);
+  const pBC = lp( Math.PI/2,   BC);
+  const pBL = lp( 5*Math.PI/6, BL);
+
+  ctx.save();
+  ctx.shadowColor = col;
+  ctx.shadowBlur  = 14 + vp*12;
+
+  // ════ PHASE 1 : Pac-Man (vp < 0.5) ════
+  // On dessine d'abord le corps Pac-Man qui rétrécit progressivement
+  if(vp < 0.98){
+    const pacAlpha = 1 - smoothstep(0.5, 0.95, vp);
+
+    ctx.save();
+    ctx.globalAlpha = pacAlpha;
+    ctx.fillStyle   = col;
+
+    // Corps arc
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, facing + mouth, facing + Math.PI*2 - mouth);
+    ctx.closePath();
+    ctx.fill();
+
+    // Oeil (disparaît après 70%)
+    if(vp < 0.7){
+      const eyeAlpha = 1 - vp/0.7;
+      ctx.globalAlpha = pacAlpha * eyeAlpha;
+      ctx.shadowBlur  = 0;
+      ctx.fillStyle   = 'rgba(0,0,0,0.75)';
+      const ex = cx + Math.cos(facing - 0.5)*R*0.52;
+      const ey = cy + Math.sin(facing - 0.5)*R*0.52;
+      ctx.beginPath(); ctx.arc(ex, ey, R*0.12, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ════ PHASE 2 : Faces du cube (apparition progressive) ════
+  // Face TOP — apparaît dès vp>0.15, opaque à vp=0.55
+  const topAlpha  = smoothstep(0.15, 0.55, vp);
+  // Face RIGHT/Left — apparaissent légèrement après
+  const sideAlpha = smoothstep(0.30, 0.70, vp);
+
+  // ── Face TOP ──
+  if(topAlpha > 0.01){
+    ctx.save();
+    ctx.globalAlpha = topAlpha;
+    const gT = ctx.createLinearGradient(pML.x, pML.y, pMR.x, pT.y);
+    // Lerp couleur top : de la couleur Pac vers lavande/cyan
+    const topC0 = lerpRGB({r:255,g:216,b:77}, {r:196,g:181,b:253}, vp);
+    const topC1 = lerpRGB({r:255,g:216,b:77}, {r:103,g:232,b:249}, vp);
+    gT.addColorStop(0, topC0); gT.addColorStop(1, topC1);
+    ctx.shadowColor = col; ctx.shadowBlur = 10;
+    polyPts([pT,pMR,pMC,pML]); ctx.fillStyle=gT; ctx.fill();
+    ctx.restore();
+  }
+
+  // ── Face DROITE ──
+  if(sideAlpha > 0.01){
+    ctx.save();
+    ctx.globalAlpha = sideAlpha;
+    const gR = ctx.createLinearGradient(pMC.x,pMC.y,pBR.x,pBR.y);
+    const rC0 = lerpRGB({r:255,g:216,b:77}, {r:109,g:40,b:217}, vp);
+    const rC1 = lerpRGB({r:200,g:150,b:30}, {r:46,g:16,b:101},  vp);
+    gR.addColorStop(0, rC0); gR.addColorStop(1, rC1);
+    polyPts([pMC,pMR,pBR,pBC]); ctx.fillStyle=gR; ctx.fill();
+    ctx.restore();
+  }
+
+  // ── Face GAUCHE ──
+  if(sideAlpha > 0.01){
+    ctx.save();
+    ctx.globalAlpha = sideAlpha;
+    const lC = lerpRGB({r:180,g:140,b:20}, {r:12,g:74,b:110}, vp);
+    polyPts([pMC,pML,pBL,pBC]);
+    ctx.fillStyle = lC; ctx.fill();
+    ctx.restore();
+  }
+
+  // ── Reflet spéculaire (apparaît avec le cube) ──
+  if(vp > 0.3){
+    ctx.save();
+    ctx.globalAlpha = smoothstep(0.3, 0.8, vp) * 0.5;
+    ctx.fillStyle   = 'rgba(255,255,255,0.9)';
+    ctx.beginPath();
+    ctx.ellipse(cx - s*0.2, cy - s*0.75, s*0.18, s*0.07, -0.3, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ── Aura pulsante quand full cube (vp≥1) ──
+  if(vp >= 0.98){
+    const pulse = 0.5 + 0.5*Math.sin(G.t*5);
+    ctx.save();
+    ctx.globalAlpha = pulse * 0.7;
+    ctx.strokeStyle = '#c4b5fd';
+    ctx.lineWidth   = 2.5;
+    ctx.shadowColor = '#7c3aed'; ctx.shadowBlur = 28;
+    // Contour hexagonal autour du cube
+    polyPts([pT,pMR,pBR,pBC,pBL,pML]);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── Animation mort ──
+  if(p.dead){
+    const dt = p.deathTimer / 1.1;
+    ctx.save();
+    ctx.globalAlpha = 1 - dt;
+    ctx.fillStyle   = 'rgba(239,68,68,0.4)';
+    ctx.beginPath(); ctx.arc(cx, cy, R*(1+dt), 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// Dessine un polygone depuis un tableau de {x,y}
+function polyPts(pts){
+  ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
+}
+
+// Lerp scalaire
+function lerp(a, b, t){ return a + (b-a)*t; }
+
+// Smoothstep (ease in-out entre edge0 et edge1)
+function smoothstep(e0, e1, x){
+  const t = Math.max(0, Math.min(1, (x-e0)/(e1-e0)));
+  return t*t*(3-2*t);
+}
+
+// ─ Fantômes ─
+function drawGhosts(){
+  G.ghosts.forEach(gh=>{
+    if(gh.dead) return;
+    const r=CFG.TS/2-4;
+    ctx.save();
+    ctx.shadowColor=gh.color; ctx.shadowBlur=12;
+    ctx.fillStyle=gh.color;
+
+    // Corps : demi-cercle + bas ondulé
+    ctx.beginPath();
+    ctx.arc(gh.x,gh.y,r,-Math.PI,0);
+    ctx.lineTo(gh.x+r,gh.y+r);
+    // 3 vagues
+    for(let i=0;i<3;i++){
+      const wx=gh.x+r-((i+1)*(r*2/3));
+      ctx.quadraticCurveTo(wx+r/3,gh.y+r+(i%2?5:-5),wx,gh.y+r);
+    }
+    ctx.lineTo(gh.x-r,gh.y);
+    ctx.closePath(); ctx.fill();
+
+    // Yeux blancs + pupilles directionnelles
+    ctx.shadowBlur=0; ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.arc(gh.x-r*.35,gh.y-r*.12,r*.28,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(gh.x+r*.35,gh.y-r*.12,r*.28,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#1d4ed8';
+    ctx.beginPath(); ctx.arc(gh.x-r*.35+gh.dx*2,gh.y-r*.12+gh.dy*2,r*.14,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(gh.x+r*.35+gh.dx*2,gh.y-r*.12+gh.dy*2,r*.14,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+}
+
+// ─ HUD vies ─
+function drawHUD(){
+  const r=CFG.TS/2-CFG.PAD_PAC;  // même rayon que Pac pour cohérence
+  const scale=0.45;               // icônes vies = 45% de Pac
+  const ir=Math.max(5,r*scale);
+  const col=lerpRGB(CFG.COL_A,CFG.COL_B,G.player.violetProg);
+  for(let i=0;i<G.lives;i++){
+    const lx=ir+2+i*(ir*2+4), ly=cv.height-ir-3;
+    ctx.save();
+    ctx.fillStyle=col;
+    ctx.shadowColor=col; ctx.shadowBlur=8;
+    ctx.beginPath();
+    ctx.moveTo(lx,ly);
+    ctx.arc(lx,ly,ir,0.28,Math.PI*2-0.28);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ─ Overlay (start/pause/over/win) ─
+function drawOverlay(title,l1,l2,accent){
+  ctx.fillStyle='rgba(0,0,0,.62)'; ctx.fillRect(0,0,cv.width,cv.height);
+  const bw=Math.min(340,cv.width-20), bh=148;
+  const ox=(cv.width-bw)/2, oy=(cv.height-bh)/2;
+  ctx.save();
+  ctx.shadowColor=accent; ctx.shadowBlur=26;
+  ctx.fillStyle='rgba(5,6,20,.95)'; ctx.strokeStyle=accent; ctx.lineWidth=1.5;
+  rrect(ox,oy,bw,bh,10); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  // Titre
+  ctx.save();
+  ctx.font=`900 20px 'Courier New',Courier,monospace`;
+  ctx.fillStyle=accent; ctx.shadowColor=accent; ctx.shadowBlur=14;
+  ctx.fillText(title,ox+16,oy+38); ctx.restore();
+  // Lignes
+  ctx.save();
+  ctx.font=`600 11px 'Courier New',Courier,monospace`;
+  ctx.fillStyle='rgba(200,210,255,.88)';
+  ctx.fillText(l1,ox+16,oy+67); ctx.restore();
+  ctx.save();
+  ctx.font=`500 10px 'Courier New',Courier,monospace`;
+  ctx.fillStyle='rgba(140,150,195,.72)';
+  ctx.fillText(l2,ox+16,oy+93); ctx.restore();
+}
+
+// ─ Frame principale ─
+function render(){
+  drawMap();
+  // Cubes (non mangés)
+  G.cubes.forEach(c=>{
+    if(c.eaten) return;
+    drawIsoCube(c.c*CFG.TS+CFG.TS/2, c.r*CFG.TS+CFG.TS/2, CFG.CUBE_S);
+  });
+  drawGhosts();
+  drawPlayer();
+  drawHUD();
+
+  switch(G.phase){
+    case 'start':{
+      const dLabel={easy:'FACILE 🟢',medium:'MOYEN 🟡',hard:'DIFFICILE 🔴'}[currentDiff];
+      const dInfo={
+        easy:`Facile — ${getDiff().ghostCount} fantôme • ${getDiff().lives} vies • score ×${getDiff().scoreBonus}`,
+        medium:`Moyen — ${getDiff().ghostCount} fantômes • ${getDiff().lives} vies • score ×${getDiff().scoreBonus}`,
+        hard:`Difficile — ${getDiff().ghostCount} fantômes • ${getDiff().lives} vies • score ×${getDiff().scoreBonus}`,
+      }[currentDiff];
+      drawOverlay('CUBE-MAN — '+dLabel,
+        '↑↓←→ bouger — Espace ou Jouer pour démarrer',
+        dInfo,
+        currentDiff==='easy'?'#6ee7b7':currentDiff==='medium'?'#fcd34d':'#fca5a5');
+      break;}
+    case 'pause':
+      drawOverlay('PAUSE','Jeu suspendu.','P ou Espace pour reprendre.','#06b6d4'); break;
+    case 'over':
+      drawOverlay('GAME OVER',
+        `Score : ${G.score}  •  Cubes : ${G.eaten}/${G.total}`,
+        'Espace ou Jouer pour recommencer.','#ef4444'); break;
+    case 'win':{
+      const dLabel={easy:'Facile',medium:'Moyen',hard:'Difficile'}[currentDiff];
+      drawOverlay('VICTOIRE ! — '+dLabel,
+        `Score : ${G.score}  •  Mutation complète !`,
+        'Espace ou Jouer pour rejouer.','#a78bfa'); break;}
+  }
+}
+
+/* ════ §9  LOOP ══════════════════════════════════════════════ */
+let prev=0;
+function loop(now){
+  const dt=Math.min((now-prev)/1000,.048);
+  prev=now;
+  if(G.phase==='play'){
+    readInput();
+    updatePlayer(dt);
+    updateGhosts(dt);
+    G.t+=dt;
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* ════ HELPERS ════════════════════════════════════════════════ */
+function poly(pts){
+  ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+  ctx.closePath();
+}
+function rrect(x,y,w,h,r){
+  r=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+
+// Sync DOM — uniquement aux transitions de phase
+function pushUI(){
+  EL.sc.textContent=G.score;
+  EL.cb.textContent=`${G.eaten} / ${G.total}`;
+  EL.lv.textContent=G.lives;
+  EL.pc.textContent=Math.round(G.player.violetProg*100)+'%';
+  EL.vb.style.width=(G.player.violetProg*100)+'%';
+  const lbl={start:'Prêt',play:'Jeu',pause:'Pause',dead:'Mort…',over:'Game Over',win:'Victoire !'};
+  EL.st.textContent=lbl[G.phase]||G.phase;
+  const diffLabels={easy:'Facile',medium:'Moyen',hard:'Difficile'};
+  EL.diff.textContent=diffLabels[currentDiff];
+  EL.diff.className='pv '+(currentDiff==='easy'?'g':currentDiff==='medium'?'w':'r');
+}
+
+/* ════ DÉMARRAGE ══════════════════════════════════════════════ */
+resetAll();
+requestAnimationFrame(t=>{ prev=t; requestAnimationFrame(loop); });
+
+})();
+</script>
+</body>
+</html>
